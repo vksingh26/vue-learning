@@ -2,32 +2,42 @@
   <div id="signup">
     <div class="signup-form">
       <form @submit.prevent="onSubmit">
-        <div class="input">
+        <div class="input" :class="{invalid: $v.email.$error}">
           <label for="email">Mail</label>
           <input
                   type="email"
                   id="email"
+                  @blur="$v.email.$touch()"
                   v-model="email">
+            <p v-if="!$v.email.email">Please provide a valid email address!</p>
+            <p v-if="!$v.email.required">This field must not be empty!</p>
         </div>
-        <div class="input">
+        <!-- see what below lines $v returns -->
+        <div>{{$v}}</div> 
+        <div class="input" :class="{invalid: $v.age.$error}">
           <label for="age">Your Age</label>
           <input
                   type="number"
                   id="age"
+                  @blur="$v.age.$touch()"
                   v-model.number="age">
+            <p v-if="!$v.age.minVal">You should be at least {{$v.age.$params.minVal.min}} years old!</p>
         </div>
-        <div class="input">
+        <div class="input" :class="{invalid: $v.password.$error}">
           <label for="password">Password</label>
           <input
                   type="password"
                   id="password"
+                  @blur="$v.password.$touch()"
                   v-model="password">
+            <p v-if="!$v.password.minLen">Password should not be less than 6 chars.</p>
         </div>
-        <div class="input">
+        <div class="input" :class="{invalid: $v.confirmPassword.$error}">
           <label for="confirm-password">Confirm Password</label>
           <input
                   type="password"
                   id="confirm-password"
+                  @blur="$v.confirmPassword.$touch()"
                   v-model="confirmPassword">
         </div>
         <div class="input">
@@ -56,12 +66,16 @@
             </div>
           </div>
         </div>
-        <div class="input inline">
-          <input type="checkbox" id="terms" v-model="terms">
+        <div class="input inline" :class="{invalid: $v.terms.$invalid}">
+          <input type="checkbox" 
+                id="terms" 
+                @change="$v.terms.$touch()"
+                v-model="terms">
+          
           <label for="terms">Accept Terms of Use</label>
         </div>
         <div class="submit">
-          <button type="submit">Submit</button>
+          <button type="submit" :disabled="$v.$error">Submit</button>
         </div>
       </form>
     </div>
@@ -69,8 +83,8 @@
 </template>
 
 <script>
-import axios from 'axios';
-import { URL } from '../../constant';
+import { required, email, numeric, minValue, minLength, sameAs, requiredUnless } from 'vuelidate/lib/validators'; //importing validators from vuelidate to check required type and email type for email field
+
   export default {
     data () {
       return {
@@ -81,6 +95,35 @@ import { URL } from '../../constant';
         country: 'usa',
         hobbyInputs: [],
         terms: false
+      }
+    },
+    validations: {
+      email: {
+        //required: required, //or we can write 'required' new js feature, if key and value have same name then we don't need to write key value just use one
+        //email: email //below required and email is same like these required: required and email: email
+        //check email field for validations
+        required,
+        email
+      },
+      age: {
+        required,
+        numeric,
+        minVal: minValue(18) //min value to be passed
+      },
+      password: {
+        required,
+        minLen: minLength(6)
+      },
+      confirmPassword: {
+        sameAs: sameAs('password')
+        // sameAs: sameAs(vm => { 
+        // return vm.password
+        //})
+      },
+      terms: {
+        required: requiredUnless((vm) => {
+          return vm.country === 'Germany'
+        })
       }
     },
     methods: {
@@ -104,16 +147,8 @@ import { URL } from '../../constant';
           hobbies: this.hobbyInputs.map(hobby => hobby.value),
           terms: this.terms
         }
-        console.log(formData);
-        axios.post('users.json', formData) //here we are accessing the url through global request configuration
-              .then(res => {
-                if(res.status === 200) {
-                  console.log(`User has been created successfully!!!`);
-                }
-              })
-              .catch(error => {
-                alert(`User can't be created due to ` + error);
-              })
+        console.log(formData)
+        this.$store.dispatch('signup', formData)
       }
     }
   }
@@ -158,6 +193,14 @@ import { URL } from '../../constant';
     outline: none;
     border: 1px solid #521751;
     background-color: #eee;
+  }
+
+  .input.invalid label {
+    color: red;
+  }
+  .input.invalid input {
+    border: 1px solid red;
+    background-color: #ffc99a;
   }
 
   .input select {
